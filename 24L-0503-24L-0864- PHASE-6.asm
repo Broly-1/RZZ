@@ -1668,6 +1668,22 @@ gameLoop:
     jmp gameLoop
 
     .endGame:
+    ; Disable music and restore timer before game over screen
+    mov byte [musicEnabled], 0
+    in al, 0x61
+    and al, 0xFC
+    out 0x61, al
+    
+    ; Restore original timer interrupt
+    xor ax, ax
+    mov es, ax
+    cli
+    mov ax, [oldTimerIP]
+    mov [es:8*4], ax
+    mov ax, [oldTimerCS]
+    mov [es:8*4+2], ax
+    sti
+    
     ; Show game over screen
     call overscreen
     mov ah,0
@@ -1687,23 +1703,6 @@ gameLoop:
     .exit:
     ; Clear screen before exit
     call clrscr
-    
-    ; Disable music and turn off speaker
-    mov byte [musicEnabled], 0
-    in al, 0x61
-    and al, 0xFC
-    out 0x61, al
-    
-    ; Restore original timer interrupt
-    xor ax, ax
-    mov es, ax
-    cli
-    mov ax, [oldTimerIP]
-    mov [es:8*4], ax
-    mov ax, [oldTimerCS]
-    mov [es:8*4+2], ax
-    sti
-    
     ret
 
 start: 
@@ -1723,7 +1722,6 @@ start:
     call startscreen
         ; Wait for key press to start
 
-    ; NOW initialize multitasking (after all keyboard input is done)
     mov word [taskstates+10+4], musicTask
     mov [taskstates+10+6], cs
     mov word [taskstates+10+8], 0x0200
